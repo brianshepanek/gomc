@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	//"reflect"
 	"strings"
+	//"fmt"
 	//"gopkg.in/mgo.v2"
     //"gopkg.in/mgo.v2/bson"
     //"time"
@@ -30,7 +31,8 @@ func (db Elasticsearch) Connect(host string) (*elastic.Client, error) {
 		elastic.SetURL(host),
 	)
 	if err != nil {
-	    // Handle error
+	    fmt.Println(err)
+	    fmt.Println(host)
 	}
 
 	return client, err
@@ -54,7 +56,12 @@ func (db Elasticsearch) formatParams(model *Model, params Params) (Elasticsearch
 	elasticsearchParams.SortField = model.Sort
 	elasticsearchParams.SortOrder = true
 	if params.Sort != "" {
-		elasticsearchParams.SortField = params.Sort
+		if string(params.Sort[0]) == "-"{
+			elasticsearchParams.SortField = strings.TrimPrefix(params.Sort, "-")
+			elasticsearchParams.SortOrder = false
+		} else {
+			elasticsearchParams.SortField = params.Sort
+		}
 	}
 
 	
@@ -64,6 +71,8 @@ func (db Elasticsearch) formatParams(model *Model, params Params) (Elasticsearch
 	if params.Page > 0 {
 		elasticsearchParams.From = ((params.Page - 1) * model.Limit)
 		elasticsearchParams.Size = (params.Page * model.Limit)
+	} else if params.Limit > 0 {
+		elasticsearchParams.Size = params.Limit
 	}
 
 	

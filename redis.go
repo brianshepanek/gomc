@@ -1,7 +1,7 @@
 package gomc
 
 import (
-	//"fmt"
+	"fmt"
 	"encoding/json"
 	"github.com/garyburd/redigo/redis"
 )
@@ -13,7 +13,7 @@ func (db Redis) Set(model *Model, result interface{}) error{
     //Connect
 	conn, err := redis.Dial("tcp", model.AppConfig.Databases[model.CacheDataUseDatabaseConfig].Host + ":" + model.AppConfig.Databases[model.CacheDataUseDatabaseConfig].Port)
     if err != nil {
-
+        fmt.Println(err)
     }
 
     //Key

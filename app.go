@@ -44,6 +44,7 @@ func myLookupKey(key interface{}, r *http.Request) []uint8{
     
     if key != "" {
         FindId(Config.RequestValidateModel, key.(string), Config.RequestValidateData)
+        //fmt.Println(Config.RequestValidateData)
         data := reflect.ValueOf(Config.RequestValidateData)
         data = data.Elem()
         

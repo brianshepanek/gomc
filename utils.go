@@ -75,6 +75,14 @@ func UrlMapToParams(urlMap map[string][]string) (Params){
         delete(urlMap, "page")
     }
 
+    //Limit
+    if(len(urlMap["limit"]) > 0){
+        limit := urlMap["limit"][0]
+        x, _ := strconv.Atoi(limit)
+        params.Limit = x
+        delete(urlMap, "limit")
+    }
+
     //Query
     for key, value := range urlMap {
         queryMap[key] = value[0]

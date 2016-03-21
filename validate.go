@@ -10,6 +10,8 @@ import (
 type ValidationRule struct {
 	Rule string
 	Message string
+	Min int
+	Max int
 	ValidatedOnActions []string
 }
 
@@ -75,6 +77,13 @@ func ModelValidate(m *Model) []RequestError {
 						    	if rule.Rule == "IsAlphanumeric"{
 						    		valid = govalidator.IsAlphanumeric(valueField.String())
 						    	}
+						    	if rule.Rule == "IsByteLength"{
+						    		valid = govalidator.IsByteLength(valueField.String(), rule.Min, rule.Max)
+						    	}
+						    	if rule.Rule == "IsURL"{
+						    		valid = govalidator.IsURL(valueField.String())
+						    	}
+						    	
 						    	if !valid {
 
 						    		error := RequestError{

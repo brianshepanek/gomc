@@ -23,7 +23,7 @@ func (db MongoDb) Connect(server string) (*mgo.Session, error) {
         
     session, err := mgo.Dial(server)
     if err != nil {
-    	//panic(err)
+    	fmt.Println(err)
     }
     //defer session.Close()
 
@@ -157,6 +157,18 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
 	} 
     return err
 }
+
+func (db MongoDb) FindId(model *Model, id string, result interface{}) error {
+
+	//DB
+	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+    defer session.Close()
+
+    //Results
+   	err := collection.FindId(bson.ObjectIdHex(id)).One(result)
+
+	return err
+}	
 
 func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error {
 

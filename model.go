@@ -16,7 +16,7 @@ type Params struct {
     Fields []string
     Sort string
     Page int
-    //Limit int
+    Limit int
     //Skip int
 }
 
@@ -65,6 +65,7 @@ type Model struct {
 	CacheDataUseDatabaseConfig string
 	CacheDataUseTable string
 	CacheId string
+	CachePrefix string
 	FoundFrom string
 	WebSocketPushData bool
 	WebSocketPushChannel string
@@ -93,6 +94,18 @@ func (m *Model) Validate(){
 }
 
 func (m *Model) AfterValidate(){}
+
+func Validate(am AppModel, result interface{}){
+
+	//Set Save Action
+	am.SetSaveAction()
+
+	//Validate
+	am.BeforeValidate()
+	am.Validate()
+	am.AfterValidate()
+
+}
 
 func (m *Model) BeforeSave(){}
 
@@ -223,12 +236,22 @@ func (m *Model) FindId(id string, result interface{}) (error){
 	if m.CacheData {
 		switch {
 		case m.AppConfig.Databases[m.CacheDataUseDatabaseConfig].Type == "redis" :
-
 			var db Redis
-			err = db.Get(m, id, result)
+			err = db.Get(m, m.CachePrefix + id, result)
 
 		}
+	} else {
+		switch {
+		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+
+			var db MongoDb
+			err := db.FindId(m, id, result)
+			if err != nil{
+
+			}
+		}
 	}
+
 	return err
 }
 
