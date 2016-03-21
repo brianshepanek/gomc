@@ -342,7 +342,7 @@ func (m *Model) DeleteId(id string, result interface{}) (error){
 		case m.AppConfig.Databases[m.CacheDataUseDatabaseConfig].Type == "redis" :
 
 			var db Redis
-			err = db.Delete(m, id, result)
+			err = db.Delete(m, m.CachePrefix + id, result)
 
 		}
 	}
