@@ -19,6 +19,7 @@ type Route struct {
     Handler func(http.ResponseWriter, *http.Request)
     Methods []string
     HeadersRegexp []string
+    Headers []string
     ValidateRequest bool
     RateLimitRequest bool
 }
@@ -199,7 +200,7 @@ func Run() {
                 handler = validateRequest(handler)
             }
             handler = requestReset(handler)
-            router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...)
+            router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...).Headers(Routes[i].Headers...)
         }
     }
     log.Fatal(http.ListenAndServe(":8080", router))

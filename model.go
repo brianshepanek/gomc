@@ -1,7 +1,7 @@
 package gomc
 
 import (
-	//"fmt"
+	"fmt"
 	"encoding/json"
 	//"github.com/brianshepanek/gomc/databases"
 	//"gomc/config"
@@ -80,9 +80,11 @@ func (m *Model) SetSaveAction(){
 	//Data
 	sentData := m.Data
 	data := reflect.ValueOf(sentData)
-	primaryKey := reflect.Indirect(data).FieldByName(m.PrimaryKey)
-	if !IsEmptyValue(primaryKey) {
-		m.SaveAction = "update"
+	if m.PrimaryKey != ""{
+		primaryKey := reflect.Indirect(data).FieldByName(m.PrimaryKey)
+		if !IsEmptyValue(primaryKey) {
+			m.SaveAction = "update"
+		}
 	}
 }
 
@@ -121,7 +123,7 @@ func (m *Model) Save(result interface{}) (error){
 			var db MongoDb
 			err := db.Save(m, result)
 			if err != nil{
-
+				fmt.Println(err)
 			}
 		}
 	}
