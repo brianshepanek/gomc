@@ -113,7 +113,7 @@ func (m *Model) BeforeSave(){}
 
 func (m *Model) Save(result interface{}) (error){
 	var err error
-
+	m.AppConfig = Config
 	if len(m.ValidationErrors) == 0 {
 
 		//Database Config
@@ -136,6 +136,7 @@ func (m *Model) AfterSave(){}
 func (m *Model) BeforeIndex(){}
 
 func (m *Model) SaveIndex(result interface{}){
+	m.AppConfig = Config
 	if m.IndexData {
 
 		if len(m.ValidationErrors) == 0 {
@@ -158,6 +159,7 @@ func (m *Model) AfterIndex(){}
 func (m *Model) BeforeCache(){}
 
 func (m *Model) SaveCache(result interface{}){
+	m.AppConfig = Config
 	if m.CacheData {
 
 		if len(m.ValidationErrors) == 0 {
@@ -180,6 +182,7 @@ func (m *Model) AfterCache(){}
 func (m *Model) BeforeWebSocketPush(){}
 
 func (m *Model) WebSocketPush(){
+	m.AppConfig = Config
 	if m.WebSocketPushData {
 
 		if len(m.ValidationErrors) == 0 {
@@ -234,7 +237,7 @@ func Save(am AppModel, result interface{}) (error){
 func (m *Model) FindId(id string, result interface{}) (error){
 
 	var err error
-
+	m.AppConfig = Config
 	if m.CacheData {
 		switch {
 		case m.AppConfig.Databases[m.CacheDataUseDatabaseConfig].Type == "redis" :
@@ -271,7 +274,7 @@ func FindId(am AppModel, id string, result interface{}) (error){
 func (m *Model) FindOne(params Params, result interface{}) (error){
 
 	var err error
-
+	m.AppConfig = Config
 	switch {
 	case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
 
@@ -296,7 +299,7 @@ func FindOne(am AppModel, params Params, result interface{}) (error){
 func (m *Model) Find(params Params, results interface{}) (error){
 
 	var err error
-
+	m.AppConfig = Config
 	if m.IndexData {
 		switch {
 		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
@@ -328,7 +331,7 @@ func (m *Model) AfterFind(){}
 func (m *Model) DeleteId(id string, result interface{}) (error){
 
 	var err error
-
+	m.AppConfig = Config
 	if m.IndexData {
 		switch {
 		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
