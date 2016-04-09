@@ -149,7 +149,7 @@ func requestReset(fn http.HandlerFunc) http.HandlerFunc {
         context.Set(r, RequestValidUser, false)
         context.Set(r, RequestRateLimitLimit, 0)
         context.Set(r, RequestRateLimitCurrent, 0)
-        context.Set(r, RequestRateLimitRemaining, 0)
+        context.Set(r, RequestRateLimitRemaining, 1)
         context.Set(r, RequestRateLimitReset, 0)
         context.Set(r, RequestApiKey, 0)
 
@@ -195,7 +195,7 @@ func Run() {
             handler = setResponse(handler)
             if Routes[i].RateLimitRequest {
                 handler = rateLimit(handler)
-            }
+            } 
             if Routes[i].ValidateRequest {
                 handler = validateRequest(handler)
             }
