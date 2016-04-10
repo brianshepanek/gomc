@@ -14,7 +14,7 @@ import (
     "strconv"
 )
 
-type Server mux.Router
+
 
 type Route struct {
     Path string
@@ -187,7 +187,7 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-func Run() *Server {
+func Run() *mux.Router {
     
     router := mux.NewRouter().StrictSlash(true)
     
