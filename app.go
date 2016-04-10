@@ -204,4 +204,6 @@ func Run() {
         }
     }
     log.Fatal(http.ListenAndServe(":8080", router))
+
+    return router
 }
