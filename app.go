@@ -187,7 +187,7 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-func Run() *mux.Router {
+func Run(port string) *mux.Router {
     
     router := mux.NewRouter().StrictSlash(true)
     
@@ -205,7 +205,7 @@ func Run() *mux.Router {
             router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...).Headers(Routes[i].Headers...)
         }
     }
-    log.Fatal(http.ListenAndServe(":8080", router))
+    log.Fatal(http.ListenAndServe(":" + port, router))
 
     return router
 }
