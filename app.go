@@ -207,5 +207,4 @@ func Run(port string) *mux.Router {
     }
     log.Fatal(http.ListenAndServe(":" + port, router))
 
-    return router
 }
