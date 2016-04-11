@@ -187,7 +187,7 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-func Run(port string) *mux.Router {
+func Run(port string){
     
     router := mux.NewRouter().StrictSlash(true)
     
