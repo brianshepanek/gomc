@@ -72,8 +72,9 @@ func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
 
 
         //Parse
-        token, err := jwt-go.ParseFromRequest(r, func(token *jwt-go.Token) (interface{}, error) {
-            if _, ok := token.Method.(*jwt-go.SigningMethodHMAC); !ok {
+        /*
+        token, err := jwt.ParseFromRequest(r, func(token *jwt.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
                 //return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
             }
             return myLookupKey(token.Claims["sub"], r), nil
@@ -94,7 +95,7 @@ func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
             w.WriteHeader(http.StatusUnauthorized)
             json.NewEncoder(w).Encode(repsonse)
         }
-
+        */
     }
 }
 
