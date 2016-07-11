@@ -9,6 +9,10 @@ import (
     "crypto/sha256"
     "io"
     "encoding/hex"
+	"regexp"
+	//"fmt"
+	//"encoding/json"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func IsEmptyValue(v reflect.Value) bool {
@@ -44,10 +48,10 @@ func StringInSlice(a string, list []string) bool {
 }
 
 func UrlMapToParams(urlMap map[string][]string) (Params){
-    
+
     //Params
     var params Params
-    
+
     queryMap := make(map[string]interface{})
 
     //Token
@@ -68,6 +72,7 @@ func UrlMapToParams(urlMap map[string][]string) (Params){
     }
 
     //Page
+	params.Page = 1
     if(len(urlMap["page"]) > 0){
         page := urlMap["page"][0]
         i, _ := strconv.Atoi(page)
@@ -85,10 +90,21 @@ func UrlMapToParams(urlMap map[string][]string) (Params){
 
     //Query
     for key, value := range urlMap {
-        queryMap[key] = value[0]
+
+		queryVal := value[0]
+
+		//Check for Array
+		if strings.Index(queryVal, ",") > 0 {
+			queryArray := strings.Split(queryVal, ",")
+			queryMap[key] = queryArray
+		} else {
+			queryMap[key] = queryVal
+		}
+
+
     }
     params.Query = queryMap
-    
+
     return params
 }
 
@@ -98,6 +114,22 @@ func JsonKeyFromStructKey(model interface{}, structKey string) (jsonKey string){
     tagArray := strings.Split(tag,",")
 
     return tagArray[0]
+}
+
+func StructKeyFromJsonKey(model interface{}, jsonKey string) (string){
+	value := reflect.ValueOf(model)
+	var structKey string
+    for i := 0; i < value.NumField(); i++ {
+        tag := value.Type().Field(i).Tag
+        jsonTag := tag.Get("json")
+		tagArray := strings.Split(jsonTag,",")
+		if(tagArray[0] == jsonKey){
+			structKey = value.Type().Field(i).Name
+		}
+
+    }
+
+    return structKey
 }
 
 func GenerateRandomBytes(n int) ([]byte, error) {
@@ -123,4 +155,13 @@ func HashString(salt string, input string) (string){
     hashedString := hex.EncodeToString(h256.Sum(nil))
 
     return hashedString
+}
+
+func Debug(x interface{}){
+	spew.Dump(x)
+}
+
+func SlugString(s string) string {
+	var re = regexp.MustCompile("[^a-z0-9]+")
+    return strings.Trim(re.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }

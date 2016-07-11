@@ -20,7 +20,7 @@ type MongoDbParams struct {
 
 
 func (db MongoDb) Connect(server string) (*mgo.Session, error) {
-        
+
     session, err := mgo.Dial(server)
     if err != nil {
     	fmt.Println(err)
@@ -32,13 +32,13 @@ func (db MongoDb) Connect(server string) (*mgo.Session, error) {
 
 
 func (db MongoDb) Collection(host string, database string, collection string) (*mgo.Collection, *mgo.Session) {
-       
-	sess, err := db.Connect(host)   
+
+	sess, err := db.Connect(host)
 	if err != nil {
     	//panic(err)
     }
-	coll := sess.DB(database).C(collection)    
-    
+	coll := sess.DB(database).C(collection)
+
     return coll, sess
 }
 
@@ -63,14 +63,43 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 	//Page
 	mongoDbParams.Skip = 0
 	mongoDbParams.Limit = model.Limit
+	if params.Limit != 0{
+		mongoDbParams.Limit = params.Limit
+	}
 	if params.Page > 0 {
 		mongoDbParams.Skip = ((params.Page - 1) * model.Limit)
 		mongoDbParams.Limit = (params.Page * model.Limit)
 	}
+	for key, value := range params.Query{
+		structKey := StructKeyFromJsonKey(model.Schema, key)
+		//fmt.Println(structKey)
+		field, err := reflect.TypeOf(model.Schema).FieldByName(structKey)
+		if err {
+			fieldType := field.Type.Kind()
+
+			switch fieldType {
+			case reflect.String, reflect.Array:
+				//params.Query[key] = valueField.String()
+			case reflect.Bool:
+				if(value == "true" || value == 1 || value == "1"){
+					params.Query[key] = true
+				} else {
+					params.Query[key] = false
+				}
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				//params.Query[key] = valueField.Int()
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+				//params.Query[key] = valueField.Uint()
+			case reflect.Float32, reflect.Float64:
+				//params.Query[key] = valueField.Float()
+			default :
+				//params.Query[key] = valueField.Interface()
+			}
+		}
+	}
 
 	//Query
 	mongoDbParams.Query = params.Query
-
 	return mongoDbParams
 }
 
@@ -93,7 +122,7 @@ func (db MongoDb) Delete(model *Model, id string, result interface{}) error {
 
 	//Move to Delete Collection
 	err = collectionDelete.Insert(result)
-	
+
 	//Delete Current
 	err = collection.RemoveId(bson.ObjectIdHex(id))
 	fmt.Println(err)
@@ -101,7 +130,7 @@ func (db MongoDb) Delete(model *Model, id string, result interface{}) error {
 }
 
 func (db MongoDb) Save(model *Model, result interface{}) error {
-    
+
     //DB
     collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
     defer session.Close()
@@ -115,9 +144,18 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
     	primaryKey := reflect.ValueOf(model.Data).FieldByName(model.PrimaryKey).Interface()
     	err = collection.FindId(primaryKey).One(result)
     	if err != nil {
-    		//fmt.Println(err)
+    		fmt.Println(err)
     	}
-	}    
+	}
+
+	//Replace
+	if model.SaveAction == "replace" {
+		primaryKey := reflect.ValueOf(model.Data).FieldByName(model.PrimaryKey).Interface()
+		err = collection.Update(bson.M{"_id": primaryKey}, model.Data)
+		if err != nil {
+    		fmt.Println(err)
+    	}
+	}
 
 	//Updated
 	if model.SaveAction == "update" {
@@ -127,7 +165,7 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
     	updateMap["$set"] = make(map[string]interface{})
     	data := reflect.ValueOf(model.Data)
     	primaryKey := reflect.ValueOf(model.Data).FieldByName(model.PrimaryKey).Interface()
-    	
+
     	for i := 0; i < data.NumField(); i++ {
 			valueField := data.Field(i)
 			nameField := data.Type().Field(i).Name
@@ -137,14 +175,14 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
 					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.String()
 				case reflect.Bool:
 					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Bool()
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:	
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Int()
-				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:	
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Uint()
-				case reflect.Float32, reflect.Float64:	
+				case reflect.Float32, reflect.Float64:
 					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Float()
 				default :
-					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Interface()		
+					updateMap["$set"][JsonKeyFromStructKey(model.Schema, nameField)] = valueField.Interface()
 				}
 			}
 		}
@@ -154,7 +192,7 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
 		}
 		_, err = collection.Find(bson.M{"_id": primaryKey}).Apply(change, result)
 
-	} 
+	}
     return err
 }
 
@@ -168,7 +206,7 @@ func (db MongoDb) FindId(model *Model, id string, result interface{}) error {
    	err := collection.FindId(bson.ObjectIdHex(id)).One(result)
 
 	return err
-}	
+}
 
 func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error {
 
@@ -181,22 +219,54 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 
     //Results
    	err := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Limit(mongoParams.Limit).Skip(mongoParams.Skip).One(result)
-	
+
 	return err
-}	
+}
+
+func (db MongoDb) Count(model *Model) int {
+
+	//DB
+	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+    defer session.Close()
+
+	//Count
+	countResult, countErr := collection.Count()
+
+	if countErr != nil {
+	    // Handle error
+	    fmt.Println(countErr)
+	} else {
+		model.Count = countResult
+		//count = countResult
+	}
+
+	return countResult
+}
 
 func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 
 	//Params
 	mongoParams := db.formatParams(model, params)
 
+	//fmt.Println(mongoParams)
+
 	//DB
 	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
     defer session.Close()
 
-    
+	//Count
+	countResult, countErr := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Count()
+
+	if countErr != nil {
+	    // Handle error
+	    fmt.Println(countErr)
+	} else {
+		model.Count = countResult
+		//count = countResult
+	}
+
     //Results
    	err := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Limit(mongoParams.Limit).Skip(mongoParams.Skip).All(results)
-	
+
 	return err
-}	
+}

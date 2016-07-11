@@ -7,7 +7,7 @@ import (
 	//"gomc/config"
 	"reflect"
 	//"strings"
-	//"strconv"
+	"strconv"
 	//"time"
 )
 
@@ -21,7 +21,7 @@ type Params struct {
 }
 
 type AppModel interface{
-	BeforeFind()
+	BeforeFind(params Params)
 	Find(params Params, result interface{}) (error)
 	AfterFind()
 	FindOne(params Params, result interface{}) (error)
@@ -36,6 +36,11 @@ type AppModel interface{
 	AfterSave()
 	BeforeIndex()
 	SaveIndex(result interface{})
+	Reindex()
+	FindCount() int
+	DeleteIndex()
+	CreateIndex()
+	MapIndex()
 	AfterIndex()
 	BeforeCache()
 	SaveCache(result interface{})
@@ -69,21 +74,27 @@ type Model struct {
 	FoundFrom string
 	WebSocketPushData bool
 	WebSocketPushChannel string
+	Count int
+	Links []map[string]int
+	IndexMapping map[string]interface{}
 }
 
 
 func (m *Model) SetSaveAction(){
 
 	//Action
-	m.SaveAction = "create"
+	if m.SaveAction == ""{
 
-	//Data
-	sentData := m.Data
-	data := reflect.ValueOf(sentData)
-	if m.PrimaryKey != ""{
-		primaryKey := reflect.Indirect(data).FieldByName(m.PrimaryKey)
-		if !IsEmptyValue(primaryKey) {
-			m.SaveAction = "update"
+		m.SaveAction = "create"
+
+		//Data
+		sentData := m.Data
+		data := reflect.ValueOf(sentData)
+		if m.PrimaryKey != ""{
+			primaryKey := reflect.Indirect(data).FieldByName(m.PrimaryKey)
+			if !IsEmptyValue(primaryKey) {
+				m.SaveAction = "update"
+			}
 		}
 	}
 }
@@ -140,7 +151,7 @@ func (m *Model) SaveIndex(result interface{}){
 	if m.IndexData {
 
 		if len(m.ValidationErrors) == 0 {
-			
+
 			//Database Config
 			switch {
 			case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
@@ -149,6 +160,81 @@ func (m *Model) SaveIndex(result interface{}){
 				if err != nil{
 
 				}
+			}
+		}
+	}
+}
+
+func Reindex(am AppModel, params Params, results interface{}){
+	am.DeleteIndex()
+	am.CreateIndex()
+	am.MapIndex()
+}
+
+func FindCount(am AppModel) int{
+	count := am.FindCount()
+	return count
+}
+
+func (m *Model) FindCount() int{
+	var count int
+	m.AppConfig = Config
+	if m.IndexData {
+
+		switch {
+		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+			var db MongoDb
+			count = db.Count(m)
+		}
+	}
+	return count
+}
+
+func (m *Model) Reindex(){}
+
+func (m *Model) CreateIndex(){
+	m.AppConfig = Config
+	if m.IndexData {
+
+		//Database Config
+		switch {
+		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
+			var db Elasticsearch
+			err := db.CreateIndex(m)
+			if err != nil{
+
+			}
+		}
+	}
+}
+
+func (m *Model) DeleteIndex(){
+	m.AppConfig = Config
+	if m.IndexData {
+
+		//Database Config
+		switch {
+		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
+			var db Elasticsearch
+			err := db.DeleteIndex(m)
+			if err != nil{
+
+			}
+		}
+	}
+}
+
+func (m *Model) MapIndex(){
+	m.AppConfig = Config
+	if m.IndexData {
+
+		//Database Config
+		switch {
+		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
+			var db Elasticsearch
+			err := db.MapIndex(m)
+			if err != nil{
+
 			}
 		}
 	}
@@ -163,7 +249,7 @@ func (m *Model) SaveCache(result interface{}){
 	if m.CacheData {
 
 		if len(m.ValidationErrors) == 0 {
-			
+
 			//Database Config
 			switch {
 			case m.AppConfig.Databases[m.CacheDataUseDatabaseConfig].Type == "redis" :
@@ -186,7 +272,7 @@ func (m *Model) WebSocketPush(){
 	if m.WebSocketPushData {
 
 		if len(m.ValidationErrors) == 0 {
-			
+
 			jsonData, _ := json.Marshal(m.Data)
 			err := WebSocketPush(m.WebSocketPushChannel, string(jsonData))
 			if err != nil {
@@ -199,7 +285,7 @@ func (m *Model) WebSocketPush(){
 func (m *Model) AfterWebSocketPush(){}
 
 func Save(am AppModel, result interface{}) (error){
-	
+
 	var err error
 
 	//Set Save Action
@@ -224,7 +310,7 @@ func Save(am AppModel, result interface{}) (error){
 	am.BeforeCache()
 	am.SaveCache(result)
 	am.AfterCache()
-	
+
 	//WebSocket Push
 	am.BeforeWebSocketPush()
 	am.WebSocketPush()
@@ -261,12 +347,12 @@ func (m *Model) FindId(id string, result interface{}) (error){
 }
 
 func FindId(am AppModel, id string, result interface{}) (error){
-	
+
 	var err error
 
 	//Database Config
 	err = am.FindId(id, result)
-	
+
 
 	return err
 }
@@ -291,7 +377,7 @@ func FindOne(am AppModel, params Params, result interface{}) (error){
 
 	//Database Config
 	err = am.FindOne(params, result)
-	
+
 
 	return err
 }
@@ -308,6 +394,40 @@ func (m *Model) Find(params Params, results interface{}) (error){
 			err = db.Query(m, params, results)
 
 		}
+	} else {
+		switch {
+		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+
+			var db MongoDb
+			err := db.Find(m, params, results)
+			if err != nil{
+
+			}
+
+		}
+	}
+
+	//First
+	if m.Count > m.Limit {
+		x := 1
+		var pages []int
+		for i := 1; i < m.Count; i += m.Limit{
+		    pages = append(pages, x)
+			x++
+		}
+		if len(pages) > 0 {
+			m.Links = append(m.Links, map[string]int{"first" : 1})
+			m.Links = append(m.Links, map[string]int{"last" : pages[len(pages) - 1]})
+			if params.Page - 1 > 0 {
+				m.Links = append(m.Links, map[string]int{"prev" : params.Page - 1})
+			}
+			if params.Page + 1 <= len(pages) - 1 {
+				m.Links = append(m.Links, map[string]int{"next" : params.Page + 1})
+			}
+			for y := 1; y <= len(pages); y++{
+				m.Links = append(m.Links, map[string]int{"page_" + strconv.Itoa(y) : y})
+			}
+		}
 	}
 	return err
 }
@@ -316,14 +436,14 @@ func Find(am AppModel, params Params, results interface{}) (error){
 	var err error
 
 	//Validate
-	am.BeforeFind()
+	am.BeforeFind(params)
 	err = am.Find(params, results)
 	am.AfterFind()
 
 	return err
 }
 
-func (m *Model) BeforeFind(){}
+func (m *Model) BeforeFind(params Params){}
 
 func (m *Model) AfterFind(){}
 
@@ -365,12 +485,12 @@ func (m *Model) DeleteId(id string, result interface{}) (error){
 }
 
 func DeleteId(am AppModel, id string, result interface{}) (error){
-	
+
 	var err error
 
 	//Database Config
 	err = am.DeleteId(id, result)
-	
+
 
 	return err
 }
