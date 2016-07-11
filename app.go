@@ -42,15 +42,15 @@ const RequestRateLimitRemaining string = "RequestRateLimitRemaining"
 const RequestRateLimitReset string = "RequestRateLimitReset"
 
 func myLookupKey(key interface{}, r *http.Request) []uint8{
-    
+
     var ApiKey string
-    
+
     if key != "" {
         FindId(Config.RequestValidateModel, key.(string), Config.RequestValidateData)
         //fmt.Println(Config.RequestValidateData)
         data := reflect.ValueOf(Config.RequestValidateData)
         data = data.Elem()
-        
+
         for i := 0; i < data.NumField(); i++ {
             nameField := data.Type().Field(i).Name
             valueField := data.Field(i)
@@ -63,22 +63,22 @@ func myLookupKey(key interface{}, r *http.Request) []uint8{
             }
         }
     }
-    
-    return []uint8(ApiKey) 
+
+    return []uint8(ApiKey)
 }
 
 func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        
-        
+
+
         //Parse
-        token, err := jwt.ParseFromRequest(r, func(token *jwt.Token) (interface{}, error) {
-            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+        token, err := jwt-go.ParseFromRequest(r, func(token *jwt-go.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt-go.SigningMethodHMAC); !ok {
                 //return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
             }
             return myLookupKey(token.Claims["sub"], r), nil
         })
-        
+
         if err == nil && token.Valid && token != nil {
             context.Set(r, RequestValidUser, true)
 
@@ -86,7 +86,7 @@ func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
             fn(w, r)
 
         } else {
-            
+
             w.Header().Set("Content-Type", "application/json")
             repsonse := RequestErrorWrapper{
                 Message : "You are not authorized to perform this action",
@@ -94,23 +94,23 @@ func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
             w.WriteHeader(http.StatusUnauthorized)
             json.NewEncoder(w).Encode(repsonse)
         }
-        
+
     }
 }
 
 func rateLimit(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        
+
         //IP
         clientIp := strings.Split(r.RemoteAddr,":")[0]
-        
+
         //Redis Connect
         conn, err := redis.Dial("tcp", Config.Databases[Config.RateLimitDataUseDatabaseConfig].Host + ":" + Config.Databases[Config.RateLimitDataUseDatabaseConfig].Port)
         if err != nil {
             //fmt.Println(err)
         }
         defer conn.Close()
-               
+
         //Valid User
         context.Set(r, RequestRateLimitLimit, Config.LimitNonUser)
         context.Set(r, RequestRateLimitKey, clientIp)
@@ -118,10 +118,10 @@ func rateLimit(fn http.HandlerFunc) http.HandlerFunc {
             context.Set(r, RequestRateLimitLimit, Config.LimitUser)
             context.Set(r, RequestRateLimitKey, context.Get(r, RequestOrganizationId).(string))
         }
-        
+
         rateLimitKey := context.Get(r, RequestRateLimitKey).(string)
 
-        
+
         //Hours
         keyExists, _ := redis.Int(conn.Do("EXISTS", rateLimitKey + ":hour"))
         if keyExists == 0 {
@@ -138,14 +138,14 @@ func rateLimit(fn http.HandlerFunc) http.HandlerFunc {
         context.Set(r, RequestRateLimitCurrent, rateLimitCurrent)
         context.Set(r, RequestRateLimitRemaining, rateLimitRemaining)
         context.Set(r, RequestRateLimitReset, rateLimitReset)
-        
+
         fn(w, r)
     }
 }
 
 func requestReset(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        
+
         context.Set(r, RequestOrganizationId, "")
         context.Set(r, RequestRateLimitKey, "")
         context.Set(r, RequestValidUser, false)
@@ -157,47 +157,47 @@ func requestReset(fn http.HandlerFunc) http.HandlerFunc {
 
         fn(w, r)
     }
-} 
+}
 
 
 func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        
+
         //Default Headers
         w.Header().Set("Content-Type", "application/json")
         w.Header().Set("X-Rate-Limit-Limit", strconv.Itoa(context.Get(r, RequestRateLimitLimit).(int)))
         w.Header().Set("X-Rate-Limit-Remaining", strconv.Itoa(context.Get(r, RequestRateLimitRemaining).(int)))
         w.Header().Set("X-Rate-Limit-Reset", strconv.Itoa(context.Get(r, RequestRateLimitReset).(int)))
-        
+
         //Return Error
         if(context.Get(r, RequestRateLimitRemaining).(int) > 0){
             fn(w, r)
         } else {
-            
+
             repsonse := RequestErrorWrapper{
                 Message : "API rate limit exceeded for " + context.Get(r, RequestRateLimitKey).(string) + ".",
             }
             w.WriteHeader(http.StatusForbidden)
             json.NewEncoder(w).Encode(repsonse)
-            
+
         }
-        
+
         //Clear Conext
         context.Clear(r)
     }
 }
 
 func Run(port string){
-    
+
     router := mux.NewRouter().StrictSlash(true)
-    
+
     if len(Routes) > 0 {
         for i := 0; i < len(Routes); i++ {
             handler := Routes[i].Handler
             handler = setResponse(handler)
             if Routes[i].RateLimitRequest {
                 handler = rateLimit(handler)
-            } 
+            }
             if Routes[i].ValidateRequest {
                 handler = validateRequest(handler)
             }
