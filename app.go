@@ -4,7 +4,7 @@ import (
     "net/http"
     "github.com/gorilla/mux"
     "github.com/gorilla/context"
-    "github.com/dgrijalva/jwt-go"
+    //"github.com/dgrijalva/jwt-go"
     "log"
     "encoding/json"
     //"fmt"
