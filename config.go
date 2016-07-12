@@ -2,6 +2,8 @@ package gomc
 
 type DatabaseConfig struct {
 	UseDatabase string
+	Username string
+	Password string
 	Host string
 	Port string
 	Database string

@@ -42,10 +42,10 @@ func (db Elasticsearch) Connect(host string) (*elastic.Client, error) {
 
 	client, err := elastic.NewClient(
 		elastic.SetURL(host),
+		elastic.SetSniff(false),
 	)
 	if err != nil {
-	    fmt.Println(err)
-	    fmt.Println(host)
+	    panic(err)
 	}
 
 	return client, err
@@ -185,14 +185,28 @@ func (db Elasticsearch) DeleteIndex(model *Model) error {
 
 	var indices []string
 	indices = append(indices, model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database)
-	_, err = elastic.NewIndicesDeleteService(client).
+
+	//Check if Exists
+	exists, err := elastic.NewIndicesExistsService(client).
 	Index(indices).
 	Do()
 	if err != nil {
 	    // Handle error
-		fmt.Println("DeleteIndex")
+		fmt.Println("CheckIndex")
 	    fmt.Println(err)
 	}
+
+	if exists {
+		_, err = elastic.NewIndicesDeleteService(client).
+		Index(indices).
+		Do()
+		if err != nil {
+		    // Handle error
+			fmt.Println("DeleteIndex")
+		    fmt.Println(err)
+		}
+	}
+
     return err
 }
 
@@ -202,13 +216,13 @@ func (db Elasticsearch) MapIndex(model *Model) error {
 	client, err := db.Connect(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Host + ":" + model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Port)
 
 	_, err = elastic.NewIndicesPutMappingService(client).
+	Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
 	Type(model.IndexDataUseTable).
 	BodyJson(model.IndexMapping).
 	Do()
 	if err != nil {
 	    // Handle error
-		fmt.Println("MapIndex")
-	    fmt.Println(err)
+		fmt.Println(err)
 	}
 
     return err
@@ -225,8 +239,9 @@ func (db Elasticsearch) Delete(model *Model, id string, result interface{}) erro
 	Type(model.IndexDataUseTable).
 	Id(id).
 	Do()
-	fmt.Println(err)
-
+	if err != nil {
+		fmt.Println(err)
+	}
     return err
 }
 

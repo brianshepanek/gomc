@@ -1,6 +1,8 @@
 package gomc
 
 import (
+	"crypto/tls"
+  	"net"
 	"fmt"
 	"reflect"
 	"gopkg.in/mgo.v2"
@@ -21,7 +23,19 @@ type MongoDbParams struct {
 
 func (db MongoDb) Connect(server string) (*mgo.Session, error) {
 
-    session, err := mgo.Dial(server)
+	tlsConfig := &tls.Config{}
+  	tlsConfig.InsecureSkipVerify = true
+
+	//fmt.Println(server)
+	dialInfo, err := mgo.ParseURL(server)
+	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+		conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+		return conn, err
+	}
+
+	//Here it is the session. Up to you from here ;)
+	session, err := mgo.DialWithInfo(dialInfo)
+    //session, err := mgo.Dial(server)
     if err != nil {
     	fmt.Println(err)
     }
