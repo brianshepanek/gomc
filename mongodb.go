@@ -20,40 +20,42 @@ type MongoDbParams struct {
     Skip int
 }
 
+func (db MongoDb) Collection(model *Model) (*mgo.Collection, *mgo.Session) {
 
-func (db MongoDb) Connect(server string) (*mgo.Session, error) {
+	host := model.AppConfig.Databases[model.UseDatabaseConfig].Host
+	database := model.AppConfig.Databases[model.UseDatabaseConfig].Database
+	collection := model.UseTable
 
 	tlsConfig := &tls.Config{}
   	tlsConfig.InsecureSkipVerify = true
 
 	//fmt.Println(server)
-	dialInfo, err := mgo.ParseURL(server)
-	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-		conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
-		return conn, err
+	dialInfo, err := mgo.ParseURL(host)
+
+	if model.AppConfig.Databases[model.UseDatabaseConfig].UseSSL {
+		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+			return conn, err
+		}
 	}
 
-	//Here it is the session. Up to you from here ;)
+	if model.AppConfig.Databases[model.UseDatabaseConfig].Username != "" {
+		dialInfo.Username = model.AppConfig.Databases[model.UseDatabaseConfig].Username
+	}
+
+	if model.AppConfig.Databases[model.UseDatabaseConfig].Password != "" {
+		dialInfo.Password = model.AppConfig.Databases[model.UseDatabaseConfig].Password
+	}
+
 	session, err := mgo.DialWithInfo(dialInfo)
-    //session, err := mgo.Dial(server)
+
     if err != nil {
     	fmt.Println(err)
     }
-    //defer session.Close()
 
-    return session, err
-}
+	coll := session.DB(database).C(collection)
 
-
-func (db MongoDb) Collection(host string, database string, collection string) (*mgo.Collection, *mgo.Session) {
-
-	sess, err := db.Connect(host)
-	if err != nil {
-    	//panic(err)
-    }
-	coll := sess.DB(database).C(collection)
-
-    return coll, sess
+    return coll, session
 }
 
 func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
@@ -82,7 +84,6 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 	}
 	if params.Page > 0 {
 		mongoDbParams.Skip = ((params.Page - 1) * model.Limit)
-		mongoDbParams.Limit = (params.Page * model.Limit)
 	}
 	for key, value := range params.Query{
 		structKey := StructKeyFromJsonKey(model.Schema, key)
@@ -120,10 +121,10 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 func (db MongoDb) Delete(model *Model, id string, result interface{}) error {
 
 	//DB
-    collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+    collection, session := db.Collection(model)
     defer session.Close()
 
-    collectionDelete, sessionDelete := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, "_" + model.UseTable)
+    collectionDelete, sessionDelete := db.Collection(model)
     defer sessionDelete.Close()
 
     var err error
@@ -143,10 +144,28 @@ func (db MongoDb) Delete(model *Model, id string, result interface{}) error {
 	return err
 }
 
+func (db MongoDb) SaveBulk(model *Model, docs ...interface{}) error {
+
+
+
+	//DB
+	collection, session := db.Collection(model)
+	defer session.Close()
+
+	bulk := collection.Bulk()
+	bulk.Insert(docs...)
+
+
+	_, err := bulk.Run()
+	fmt.Println(err)
+	//Debug(docs)
+	return err
+}
+
 func (db MongoDb) Save(model *Model, result interface{}) error {
 
     //DB
-    collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+    collection, session := db.Collection(model)
     defer session.Close()
 
     //Results
@@ -213,7 +232,7 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
 func (db MongoDb) FindId(model *Model, id string, result interface{}) error {
 
 	//DB
-	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+	collection, session := db.Collection(model)
     defer session.Close()
 
     //Results
@@ -228,7 +247,7 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 	mongoParams := db.formatParams(model, params)
 
 	//DB
-	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+	collection, session := db.Collection(model)
     defer session.Close()
 
     //Results
@@ -240,7 +259,7 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 func (db MongoDb) Count(model *Model) int {
 
 	//DB
-	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+	collection, session := db.Collection(model)
     defer session.Close()
 
 	//Count
@@ -265,7 +284,7 @@ func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 	//fmt.Println(mongoParams)
 
 	//DB
-	collection, session := db.Collection(model.AppConfig.Databases[model.UseDatabaseConfig].Host, model.AppConfig.Databases[model.UseDatabaseConfig].Database, model.UseTable)
+	collection, session := db.Collection(model)
     defer session.Close()
 
 	//Count
@@ -281,6 +300,6 @@ func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 
     //Results
    	err := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Limit(mongoParams.Limit).Skip(mongoParams.Skip).All(results)
-
+	
 	return err
 }

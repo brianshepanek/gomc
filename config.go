@@ -4,6 +4,7 @@ type DatabaseConfig struct {
 	UseDatabase string
 	Username string
 	Password string
+	UseSSL bool
 	Host string
 	Port string
 	Database string

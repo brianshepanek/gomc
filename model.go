@@ -33,6 +33,8 @@ type AppModel interface{
 	AfterValidate()
 	BeforeSave()
 	Save(result interface{}) (error)
+	SaveBulk(result ...interface{}) (error)
+	IndexBulk(docs []interface{}) (error)
 	AfterSave()
 	BeforeIndex()
 	SaveIndex(result interface{})
@@ -283,6 +285,56 @@ func (m *Model) WebSocketPush(){
 }
 
 func (m *Model) AfterWebSocketPush(){}
+
+func IndexBulk(am AppModel, docs []interface{}) (error){
+
+	var err error
+	err = am.IndexBulk(docs)
+	return err
+}
+
+func (m *Model) IndexBulk(docs []interface{}) (error){
+	var err error
+	if m.IndexData {
+
+		//Database Config
+		switch {
+		case m.AppConfig.Databases[m.IndexDataUseDatabaseConfig].Type == "elasticsearch" :
+			var db Elasticsearch
+			err := db.IndexBulk(m, docs)
+			if err != nil{
+
+			}
+		}
+	}
+
+	return err
+}
+
+
+func SaveBulk(am AppModel, records ...interface{}) (error){
+
+	var err error
+	err = am.SaveBulk(records...)
+	return err
+}
+
+func (m *Model) SaveBulk(records ...interface{}) (error){
+	var err error
+	m.AppConfig = Config
+	//Database Config
+	switch {
+	case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+
+		var db MongoDb
+		err := db.SaveBulk(m, records...)
+		if err != nil{
+			//fmt.Println(err)
+		}
+	}
+
+	return err
+}
 
 func Save(am AppModel, result interface{}) (error){
 
