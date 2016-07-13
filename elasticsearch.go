@@ -146,7 +146,7 @@ func (db Elasticsearch) IndexBulk(model *Model, docs []interface{}) error {
     // Create a client
 	client, err := db.Connect(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Host + ":" + model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Port)
 	bulkService := elastic.NewBulkService(client)
-	
+
 	for i := 0; i < len(docs); i++ {
 		bulkIndexRequest := elastic.NewBulkIndexRequest().
 		Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
@@ -404,7 +404,12 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
     From(elasticsearchParams.From).
 	Size(elasticsearchParams.Size).
     Pretty(true)
-
+	if len(elasticsearchParams.Fields) > 0{
+		fetchSourceContext := elastic.NewFetchSourceContext(true).
+		Include(elasticsearchParams.Fields...)
+		//clientResourse.Fields(elasticsearchParams.Fields...)
+		clientResourse.FetchSourceContext(fetchSourceContext)
+	}
 	searchResult, err := clientResourse.Do()
 
 	if err != nil {
@@ -417,7 +422,6 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 	if searchResult != nil && searchResult.Hits != nil {
 	    for _, hit := range searchResult.Hits.Hits {
 			if hit.Fields != nil {
-
 				jsonString, _ := json.Marshal(hit.Fields)
 				newDataStringArray = append(newDataStringArray,string(jsonString))
 			} else {
@@ -425,7 +429,6 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 			}
 	    }
 	}
-
 	newDataString := "[" + strings.Join(newDataStringArray, ",") + "]"
 	newDataByte := []byte(newDataString)
 
