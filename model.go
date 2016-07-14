@@ -39,7 +39,7 @@ type AppModel interface{
 	BeforeIndex()
 	SaveIndex(result interface{})
 	Reindex()
-	FindCount() int
+	FindCount(params Params) int
 	DeleteIndex()
 	CreateIndex()
 	MapIndex()
@@ -135,6 +135,7 @@ func (m *Model) Save(result interface{}) (error){
 
 			var db MongoDb
 			err := db.Save(m, result)
+
 			if err != nil{
 				fmt.Println(err)
 			}
@@ -173,12 +174,12 @@ func Reindex(am AppModel, params Params, results interface{}){
 	am.MapIndex()
 }
 
-func FindCount(am AppModel) int{
-	count := am.FindCount()
+func FindCount(am AppModel, params Params) int{
+	count := am.FindCount(params)
 	return count
 }
 
-func (m *Model) FindCount() int{
+func (m *Model) FindCount(params Params) int{
 	var count int
 	m.AppConfig = Config
 	if m.IndexData {
@@ -186,7 +187,7 @@ func (m *Model) FindCount() int{
 		switch {
 		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
 			var db MongoDb
-			count = db.Count(m)
+			count = db.Count(m, params)
 		}
 	}
 	return count

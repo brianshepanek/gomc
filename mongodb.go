@@ -153,11 +153,12 @@ func (db MongoDb) SaveBulk(model *Model, docs ...interface{}) error {
 	defer session.Close()
 
 	bulk := collection.Bulk()
-	bulk.Insert(docs...)
-
+	bulk.Upsert(docs...)
 
 	_, err := bulk.Run()
-	fmt.Println(err)
+	if err != nil {
+		fmt.Println(err)
+	}
 	//Debug(docs)
 	return err
 }
@@ -256,14 +257,16 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 	return err
 }
 
-func (db MongoDb) Count(model *Model) int {
+func (db MongoDb) Count(model *Model, params Params) int {
+
+	mongoParams := db.formatParams(model, params)
 
 	//DB
 	collection, session := db.Collection(model)
     defer session.Close()
 
 	//Count
-	countResult, countErr := collection.Count()
+	countResult, countErr := collection.Find(mongoParams.Query).Count()
 
 	if countErr != nil {
 	    // Handle error
@@ -300,6 +303,6 @@ func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 
     //Results
    	err := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Limit(mongoParams.Limit).Skip(mongoParams.Skip).All(results)
-	
+
 	return err
 }
