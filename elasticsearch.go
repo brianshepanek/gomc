@@ -141,23 +141,25 @@ func (db Elasticsearch) formatParams(model *Model, params Params) (Elasticsearch
 	return elasticsearchParams
 }
 
-func (db Elasticsearch) IndexBulk(model *Model, docs []interface{}) error {
+func (db Elasticsearch) IndexBulk(model *Model, docs map[string]interface{}) error {
 
     // Create a client
 	client, err := db.Connect(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Host + ":" + model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Port)
 	bulkService := elastic.NewBulkService(client)
-
-	for i := 0; i < len(docs); i++ {
+	Debug(len(docs))
+	for indexId, doc := range docs {
 		bulkIndexRequest := elastic.NewBulkIndexRequest().
 		Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
 	    Type(model.IndexDataUseTable).
-	    Id(model.IndexId).
-		Doc(docs[i])
+	    Id(indexId).
+		Doc(doc)
 
 		bulkService.Add(bulkIndexRequest)
 	}
 	_, err = bulkService.Do()
-
+	if err != nil {
+		Debug(err)
+	}
     return err
 }
 

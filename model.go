@@ -34,7 +34,7 @@ type AppModel interface{
 	BeforeSave()
 	Save(result interface{}) (error)
 	SaveBulk(result ...interface{}) (error)
-	IndexBulk(docs []interface{}) (error)
+	IndexBulk(docs map[string]interface{}) (error)
 	AfterSave()
 	BeforeIndex()
 	SaveIndex(result interface{})
@@ -287,14 +287,14 @@ func (m *Model) WebSocketPush(){
 
 func (m *Model) AfterWebSocketPush(){}
 
-func IndexBulk(am AppModel, docs []interface{}) (error){
+func IndexBulk(am AppModel, docs map[string]interface{}) (error){
 
 	var err error
 	err = am.IndexBulk(docs)
 	return err
 }
 
-func (m *Model) IndexBulk(docs []interface{}) (error){
+func (m *Model) IndexBulk(docs map[string]interface{}) (error){
 	var err error
 	if m.IndexData {
 
