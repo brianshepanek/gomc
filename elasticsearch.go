@@ -340,6 +340,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 			geoDistanceQuery.Lat(cooridnatesValue["lat"])
 			geoDistanceQuery.Lon(cooridnatesValue["lon"])
 			geoDistanceQuery.Distance(params.Query["radius"].(string))
+			Debug(cooridnatesValue)
 			boolQuery.Filter(geoDistanceQuery)
 		}
 	}
@@ -397,7 +398,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 		model.Count = int(countResult)
 		//count = countResult
 	}
-
+	Debug(params)
 	//Search
 	clientResourse := client.Search()
     clientResourse.Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
