@@ -279,6 +279,31 @@ func (db MongoDb) Count(model *Model, params Params) int {
 	return countResult
 }
 
+func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results interface{}) error {
+
+	//DB
+	collection, session := db.Collection(model)
+    defer session.Close()
+
+	/*
+	//Count
+	countResult, countErr := collection.Pipe(aggregate).Count()
+
+	if countErr != nil {
+	    // Handle error
+	    fmt.Println(countErr)
+	} else {
+		model.Count = countResult
+		//count = countResult
+	}
+	*/
+
+    //Results
+   	err := collection.Pipe(aggregate).All(results)
+
+	return err
+}
+
 func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 
 	//Params

@@ -147,7 +147,7 @@ func (db Elasticsearch) IndexBulk(model *Model, docs map[string]interface{}) err
     // Create a client
 	client, err := db.Connect(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Host + ":" + model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Port)
 	bulkService := elastic.NewBulkService(client)
-	Debug(len(docs))
+	//Debug(len(docs))
 	for indexId, doc := range docs {
 		bulkIndexRequest := elastic.NewBulkIndexRequest().
 		Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
@@ -345,6 +345,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 			boolQuery.Filter(geoDistanceQuery)
 		}
 	}
+
 
 
 	//Nested

@@ -23,6 +23,7 @@ type Params struct {
 type AppModel interface{
 	BeforeFind(params Params)
 	Find(params Params, result interface{}) (error)
+	FindAggregate(aggregate interface{}, result interface{}) (error)
 	AfterFind()
 	FindOne(params Params, result interface{}) (error)
 	FindId(id string, result interface{}) (error)
@@ -482,6 +483,30 @@ func (m *Model) Find(params Params, results interface{}) (error){
 			}
 		}
 	}
+	return err
+}
+
+func FindAggregate(am AppModel, aggregate interface{}, results interface{}) (error){
+	var err error
+	err = am.FindAggregate(aggregate, results)
+	return err
+}
+
+func (m *Model) FindAggregate(aggregate interface{}, results interface{}) (error){
+
+	var err error
+	m.AppConfig = Config
+	switch {
+	case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+
+		var db MongoDb
+		err := db.FindAggregate(m, aggregate, results)
+		if err != nil{
+
+		}
+
+	}
+
 	return err
 }
 
