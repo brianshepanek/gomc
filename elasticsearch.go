@@ -42,10 +42,11 @@ func (db Elasticsearch) Connect(host string) (*elastic.Client, error) {
 
 	client, err := elastic.NewClient(
 		elastic.SetURL(host),
+		elastic.SetHealthcheck(false),
 		elastic.SetSniff(false),
 	)
 	if err != nil {
-	    panic(err)
+	    Debug(err)
 	}
 
 	return client, err
