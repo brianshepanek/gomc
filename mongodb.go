@@ -299,7 +299,7 @@ func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results int
 	*/
 
     //Results
-   	err := collection.Pipe(aggregate).All(results)
+   	err := collection.Pipe(aggregate).AllowDiskUse().All(results)
 
 	return err
 }
