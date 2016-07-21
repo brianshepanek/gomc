@@ -183,7 +183,7 @@ func FindCount(am AppModel, params Params) int{
 func (m *Model) FindCount(params Params) int{
 	var count int
 	m.AppConfig = Config
-	if m.IndexData {
+	if !m.IndexData {
 
 		switch {
 		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :

@@ -400,7 +400,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 		model.Count = int(countResult)
 		//count = countResult
 	}
-	Debug(params)
+	
 	//Search
 	clientResourse := client.Search()
     clientResourse.Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).
