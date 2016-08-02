@@ -312,7 +312,7 @@ func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results int
 	//err := iter.Close()
 	if err != nil {
 	    Debug(err)
-		panic("FindAggregate")
+		//panic("FindAggregate")
 
 	}
 	return err
