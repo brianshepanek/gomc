@@ -20,11 +20,9 @@ type MongoDbParams struct {
     Skip int
 }
 
-func (db MongoDb) Collection(model *Model) (*mgo.Collection, *mgo.Session) {
+func CreateMongoSession(db DatabaseConfig) (error, *mgo.Session){
 
-	host := model.AppConfig.Databases[model.UseDatabaseConfig].Host
-	database := model.AppConfig.Databases[model.UseDatabaseConfig].Database
-	collection := model.UseTable
+	host := db.Host
 
 	tlsConfig := &tls.Config{}
   	tlsConfig.InsecureSkipVerify = true
@@ -32,30 +30,39 @@ func (db MongoDb) Collection(model *Model) (*mgo.Collection, *mgo.Session) {
 	//fmt.Println(server)
 	dialInfo, err := mgo.ParseURL(host)
 
-	if model.AppConfig.Databases[model.UseDatabaseConfig].UseSSL {
+	if db.UseSSL {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
 			return conn, err
 		}
 	}
 
-	if model.AppConfig.Databases[model.UseDatabaseConfig].Username != "" {
-		dialInfo.Username = model.AppConfig.Databases[model.UseDatabaseConfig].Username
+	if db.Username != "" {
+		dialInfo.Username = db.Username
 	}
 
-	if model.AppConfig.Databases[model.UseDatabaseConfig].Password != "" {
-		dialInfo.Password = model.AppConfig.Databases[model.UseDatabaseConfig].Password
+	if db.Password != "" {
+		dialInfo.Password = db.Password
 	}
 
 	session, err := mgo.DialWithInfo(dialInfo)
-
-    if err != nil {
+	if err != nil {
     	fmt.Println(err)
     }
 
-	coll := session.DB(database).C(collection)
+	return err, session
+}
 
-    return coll, session
+func (db MongoDb) Collection(model *Model) (*mgo.Collection, *mgo.Session) {
+
+	mongoSession := Databases[model.UseDatabaseConfig].MongoSession
+	databaseName := Databases[model.UseDatabaseConfig].Database
+	collectionName := model.UseTable
+
+	sessionCopy := mongoSession.Copy()
+	collection := sessionCopy.DB(databaseName).C(collectionName)
+
+    return collection, sessionCopy
 }
 
 func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
@@ -175,11 +182,6 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
    	//Created
    	if model.SaveAction == "create" {
     	err = collection.Insert(model.Data)
-    	primaryKey := reflect.ValueOf(model.Data).FieldByName(model.PrimaryKey).Interface()
-    	err = collection.FindId(primaryKey).One(result)
-    	if err != nil {
-    		fmt.Println(err)
-    	}
 	}
 
 	//Replace
@@ -283,7 +285,7 @@ func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results int
 
 	//DB
 	collection, session := db.Collection(model)
-    defer session.Close()
+	defer session.Close()
 
 	/*
 	//Count
@@ -298,9 +300,21 @@ func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results int
 	}
 	*/
 
+
+
     //Results
    	err := collection.Pipe(aggregate).AllowDiskUse().All(results)
+	//iter := collection.Pipe(aggregate).AllowDiskUse().Iter()
+	//for iter.Next(result){
 
+	//}
+
+	//err := iter.Close()
+	if err != nil {
+	    Debug(err)
+		panic("FindAggregate")
+
+	}
 	return err
 }
 

@@ -19,6 +19,7 @@ type ValidationRule struct {
 type RequestError struct {
     Field string `json:"field"`
     Message string `json:"message"`
+	Data interface{} `json:"data"`
 }
 
 type RequestErrorWrapper struct {

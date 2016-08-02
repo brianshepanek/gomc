@@ -160,6 +160,7 @@ func (db Elasticsearch) IndexBulk(model *Model, docs map[string]interface{}) err
 	_, err = bulkService.Do()
 	if err != nil {
 		Debug(err)
+		panic("ES")
 	}
     return err
 }
@@ -356,6 +357,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 			nestedBoolQuery := elastic.NewBoolQuery()
 			for _, nestedQuery := range nestedArray{
 				for key, value := range nestedQuery{
+
 					if reflect.TypeOf(value).String() == "string" {
 
 						//Check For Match
@@ -375,8 +377,27 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 							query := elastic.NewTermQuery(rootKey + "." + key, value)
 							nestedBoolQuery.Filter(query)
 						}
-					} else {
+					} else if reflect.ValueOf(value).Kind() == reflect.Map{
+						valueMap := value.(map[string]interface{})
 
+						//LTE
+						if _, ok := valueMap["$lte"]; ok {
+							query := elastic.NewRangeQuery(rootKey + "." + key)
+							query.Lte(valueMap["$lte"])
+							nestedBoolQuery.Filter(query)
+							Debug(rootKey + "." + key)
+							Debug(valueMap["$lte"])
+						}
+
+						//GTE
+						if _, ok := valueMap["$gte"]; ok {
+							query := elastic.NewRangeQuery(rootKey + "." + key)
+							query.Gte(valueMap["$gte"])
+							nestedBoolQuery.Filter(query)
+							Debug(rootKey + "." + key)
+							Debug(valueMap["$gte"])
+						}
+					} else {
 						query := elastic.NewTermsQuery(rootKey + "." + key, value)
 						nestedBoolQuery.Filter(query)
 					}
@@ -400,7 +421,7 @@ func (db Elasticsearch) Query(model *Model, params Params, results interface{}) 
 		model.Count = int(countResult)
 		//count = countResult
 	}
-	
+
 	//Search
 	clientResourse := client.Search()
     clientResourse.Index(model.AppConfig.Databases[model.IndexDataUseDatabaseConfig].Database).

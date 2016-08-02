@@ -27,9 +27,14 @@ type Route struct {
 }
 
 var Routes []Route
+var Databases map[string]DatabaseConfig
 
 func RegisterRoute(route Route){
     Routes = append(Routes, route)
+}
+
+func RegisterDatabases(dbs map[string]DatabaseConfig){
+    Databases = dbs
 }
 
 const RequestValidUser string = "RequestValidUser"
@@ -190,8 +195,23 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
 
 func Run(port string){
 
-    router := mux.NewRouter().StrictSlash(true)
+    //Databases
+    if len(Databases) > 0 {
+        for key, value := range Databases {
+            if value.Type == "mongodb"{
+                err, session := CreateMongoSession(value)
+                if err != nil {
 
+                } else {
+                    value.MongoSession = session
+                }
+            }
+            Databases[key] = value
+        }
+    }
+
+    //Router
+    router := mux.NewRouter().StrictSlash(true)
     if len(Routes) > 0 {
         for i := 0; i < len(Routes); i++ {
             handler := Routes[i].Handler

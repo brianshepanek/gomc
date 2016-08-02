@@ -1,5 +1,9 @@
 package gomc
 
+import (
+    "gopkg.in/mgo.v2"
+)
+
 type DatabaseConfig struct {
 	UseDatabase string
 	Username string
@@ -11,6 +15,7 @@ type DatabaseConfig struct {
 	Table string
 	Limit int
 	Type string
+	MongoSession *mgo.Session
 }
 
 type AppConfig struct {
