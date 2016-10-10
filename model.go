@@ -41,6 +41,7 @@ type AppModel interface{
 	SaveIndex(result interface{})
 	Reindex()
 	FindCount(params Params) int
+	GetCounter() int
 	DeleteIndex()
 	CreateIndex()
 	MapIndex()
@@ -57,6 +58,8 @@ type Model struct {
 	AppConfig AppConfig
 	UseDatabaseConfig string
 	UseTable string
+	UseTableCounter string
+	CounterId string
 	Sort string
 	Limit int
 	PrimaryKey string
@@ -173,6 +176,25 @@ func Reindex(am AppModel, params Params, results interface{}){
 	am.DeleteIndex()
 	am.CreateIndex()
 	am.MapIndex()
+}
+
+func GetCounter(am AppModel) int{
+	counter := am.GetCounter()
+	return counter
+}
+
+func (m *Model) GetCounter() int{
+	var counter int
+	m.AppConfig = Config
+	if !m.IndexData {
+
+		switch {
+		case m.AppConfig.Databases[m.UseDatabaseConfig].Type == "mongodb" :
+			var db MongoDb
+			counter = db.Counter(m)
+		}
+	}
+	return counter
 }
 
 func FindCount(am AppModel, params Params) int{

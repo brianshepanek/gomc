@@ -20,6 +20,11 @@ type MongoDbParams struct {
     Skip int
 }
 
+type Counter struct {
+	Id string `bson:"id" json:"id"`
+	Seq int `bson:"seq" json:"seq"`
+}
+
 func CreateMongoSession(db DatabaseConfig) (error, *mgo.Session){
 
 	host := db.Host
@@ -53,11 +58,17 @@ func CreateMongoSession(db DatabaseConfig) (error, *mgo.Session){
 	return err, session
 }
 
-func (db MongoDb) Collection(model *Model) (*mgo.Collection, *mgo.Session) {
+func (db MongoDb) Collection(model *Model, counter bool) (*mgo.Collection, *mgo.Session) {
 
 	mongoSession := Databases[model.UseDatabaseConfig].MongoSession
 	databaseName := Databases[model.UseDatabaseConfig].Database
-	collectionName := model.UseTable
+	var collectionName string
+	if counter {
+		collectionName = model.UseTableCounter
+	} else {
+		collectionName = model.UseTable
+	}
+
 
 	sessionCopy := mongoSession.Copy()
 	collection := sessionCopy.DB(databaseName).C(collectionName)
@@ -103,7 +114,7 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 			case reflect.String, reflect.Array:
 				//params.Query[key] = valueField.String()
 			case reflect.Bool:
-				if(value == "true" || value == 1 || value == "1"){
+				if(value == "true" || value == 1 || value == "1" || value == true){
 					params.Query[key] = true
 				} else {
 					params.Query[key] = false
@@ -128,10 +139,10 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 func (db MongoDb) Delete(model *Model, id string, result interface{}) error {
 
 	//DB
-    collection, session := db.Collection(model)
+    collection, session := db.Collection(model, false)
     defer session.Close()
 
-    collectionDelete, sessionDelete := db.Collection(model)
+    collectionDelete, sessionDelete := db.Collection(model, false)
     defer sessionDelete.Close()
 
     var err error
@@ -156,7 +167,7 @@ func (db MongoDb) SaveBulk(model *Model, docs ...interface{}) error {
 
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
 	defer session.Close()
 
 	bulk := collection.Bulk()
@@ -172,8 +183,11 @@ func (db MongoDb) SaveBulk(model *Model, docs ...interface{}) error {
 
 func (db MongoDb) Save(model *Model, result interface{}) error {
 
+
     //DB
-    collection, session := db.Collection(model)
+    collection, session := db.Collection(model, false)
+
+
     defer session.Close()
 
     //Results
@@ -235,7 +249,7 @@ func (db MongoDb) Save(model *Model, result interface{}) error {
 func (db MongoDb) FindId(model *Model, id string, result interface{}) error {
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
     defer session.Close()
 
     //Results
@@ -250,7 +264,7 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 	mongoParams := db.formatParams(model, params)
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
     defer session.Close()
 
     //Results
@@ -259,12 +273,32 @@ func (db MongoDb) FindOne(model *Model, params Params, result interface{}) error
 	return err
 }
 
+func (db MongoDb) Counter(model *Model) int {
+
+	var doc Counter
+
+	//DB
+	collection, session := db.Collection(model, true)
+    defer session.Close()
+
+	change := mgo.Change{
+        Update: bson.M{"$inc": bson.M{"seq": 1}},
+        ReturnNew: true,
+	}
+	_, err := collection.Find(bson.M{"_id": model.CounterId}).Apply(change, &doc)
+	if err != nil {
+		fmt.Println(err)
+	}
+	
+	return doc.Seq
+}
+
 func (db MongoDb) Count(model *Model, params Params) int {
 
 	mongoParams := db.formatParams(model, params)
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
     defer session.Close()
 
 	//Count
@@ -284,7 +318,7 @@ func (db MongoDb) Count(model *Model, params Params) int {
 func (db MongoDb) FindAggregate(model *Model, aggregate interface{}, results interface{}) error {
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
 	defer session.Close()
 
 	/*
@@ -326,8 +360,9 @@ func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 	//fmt.Println(mongoParams)
 
 	//DB
-	collection, session := db.Collection(model)
+	collection, session := db.Collection(model, false)
     defer session.Close()
+
 
 	//Count
 	countResult, countErr := collection.Find(mongoParams.Query).Select(mongoParams.Fields).Sort(mongoParams.Sort).Count()

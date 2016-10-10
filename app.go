@@ -8,12 +8,18 @@ import (
     "log"
     "encoding/json"
     //"fmt"
-    "reflect"
+    //"reflect"
     "strings"
     "github.com/garyburd/redigo/redis"
     "strconv"
 )
 
+
+type AppRequestInterface interface{
+    ValidateRequestFunc(fn http.HandlerFunc) (http.HandlerFunc)
+}
+
+type AppRequest struct{}
 
 
 type Route struct {
@@ -24,6 +30,7 @@ type Route struct {
     Headers []string
     ValidateRequest bool
     RateLimitRequest bool
+    AppRequest AppRequestInterface
 }
 
 var Routes []Route
@@ -48,34 +55,96 @@ const RequestRateLimitReset string = "RequestRateLimitReset"
 
 func myLookupKey(key interface{}, r *http.Request) []uint8{
 
-    var ApiKey string
+    apiKey := "iqcST9Au8h-KbKv2wKFCVEW2iEP8O30ln3V25ASNpX-sung-UTonNAZYMQUzpJjF"
 
-    if key != "" {
-        FindId(Config.RequestValidateModel, key.(string), Config.RequestValidateData)
-        //fmt.Println(Config.RequestValidateData)
-        data := reflect.ValueOf(Config.RequestValidateData)
-        data = data.Elem()
 
-        for i := 0; i < data.NumField(); i++ {
-            nameField := data.Type().Field(i).Name
-            valueField := data.Field(i)
-            if nameField == "ApiKey" {
-                context.Set(r, RequestApiKey, valueField.String())
-                ApiKey = valueField.String()
-            }
-            if nameField == "OrganizationId" {
-                context.Set(r, RequestOrganizationId, valueField.String())
-            }
-        }
-    }
 
-    return []uint8(ApiKey)
+    return []uint8(apiKey)
 }
+
+func ValidateRequestFunc(ari AppRequestInterface, fn http.HandlerFunc) (http.HandlerFunc){
+    //fmt.Println("Hello1")
+    return ari.ValidateRequestFunc(fn)
+}
+
+func (m AppRequest) ValidateRequestFunc(fn http.HandlerFunc) http.HandlerFunc {
+    //fmt.Println("Hello")
+    return func(w http.ResponseWriter, r *http.Request) {
+        //fmt.Println("ValidateRequestFunc req kldahfgksdfhlkj")
+        fn(w, r)
+    }
+}
+
+func valReq(fn http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        //fmt.Println("val req kldahfgksdfhlkj")
+        /*
+        //Default Headers
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("X-Rate-Limit-Limit", strconv.Itoa(context.Get(r, RequestRateLimitLimit).(int)))
+        w.Header().Set("X-Rate-Limit-Remaining", strconv.Itoa(context.Get(r, RequestRateLimitRemaining).(int)))
+        w.Header().Set("X-Rate-Limit-Reset", strconv.Itoa(context.Get(r, RequestRateLimitReset).(int)))
+
+        //Return Error
+        if(context.Get(r, RequestRateLimitRemaining).(int) > 0){
+            fn(w, r)
+        } else {
+
+            repsonse := RequestErrorWrapper{
+                Message : "API rate limit exceeded for " + context.Get(r, RequestRateLimitKey).(string) + ".",
+            }
+            w.WriteHeader(http.StatusForbidden)
+            json.NewEncoder(w).Encode(repsonse)
+
+        }
+
+        //Clear Conext
+        context.Clear(r)
+        */
+    }
+}
+
 
 func validateRequest(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
 
+        fn(w, r)
+        /*
+        tokenString := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+            // Don't forget to validate the alg is what you expect:
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+            }
 
+            return myLookupKey(token.Claims["sub"], r), nil
+        })
+
+        if err == nil && token.Valid && token != nil {
+            context.Set(r, RequestValidUser, true)
+
+            //Request
+            fn(w, r)
+
+        } else {
+
+            w.Header().Set("Content-Type", "application/json")
+            repsonse := RequestErrorWrapper{
+                Message : "You are not authorized to perform this action",
+            }
+            w.WriteHeader(http.StatusUnauthorized)
+            json.NewEncoder(w).Encode(repsonse)
+        }
+        //Debug(token)
+        //Debug(err)
+        /*
+        if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+            fmt.Println(claims["foo"], claims["nbf"])
+        } else {
+            fmt.Println(err)
+        }
+        */
+        //fn(w, r)
         //Parse
         /*
         token, err := jwt.ParseFromRequest(r, func(token *jwt.Token) (interface{}, error) {
@@ -168,6 +237,7 @@ func requestReset(fn http.HandlerFunc) http.HandlerFunc {
 
 func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
+        //fmt.Println("set resp kldahfgksdfhlkj")
 
         //Default Headers
         w.Header().Set("Content-Type", "application/json")
@@ -215,12 +285,21 @@ func Run(port string){
     if len(Routes) > 0 {
         for i := 0; i < len(Routes); i++ {
             handler := Routes[i].Handler
+            /*
+            if Routes[i].ValidateRequest {
+                fmt.Println("YEP")
+                //handler = ValidateRequestFunc(Routes[i].AppRequest, handler)
+                //handler = ValidateRequestFunc(Routes[i].AppRequest, handler)
+                handler = valReq(handler)
+            }
+            */
+
             handler = setResponse(handler)
             if Routes[i].RateLimitRequest {
                 handler = rateLimit(handler)
             }
             if Routes[i].ValidateRequest {
-                handler = validateRequest(handler)
+                handler = ValidateRequestFunc(Routes[i].AppRequest, handler)
             }
             handler = requestReset(handler)
             router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...).Headers(Routes[i].Headers...)
