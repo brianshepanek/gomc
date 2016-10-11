@@ -305,6 +305,7 @@ func Run(port string){
             router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...).Headers(Routes[i].Headers...)
         }
     }
-    log.Fatal(http.ListenAndServe(":" + port, router))
     fmt.Println("Running On " + port)
+    log.Fatal(http.ListenAndServe(":" + port, router))
+
 }
