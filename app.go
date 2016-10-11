@@ -263,10 +263,6 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-func TestRun(){
-    fmt.Println("TEST RUN")
-}
-
 func Run(port string){
 
     //Databases
@@ -275,7 +271,7 @@ func Run(port string){
             if value.Type == "mongodb"{
                 err, session := CreateMongoSession(value)
                 if err != nil {
-
+                    fmt.Println(err)
                 } else {
                     value.MongoSession = session
                 }
@@ -309,7 +305,6 @@ func Run(port string){
             router.HandleFunc(Routes[i].Path, handler).Methods(Routes[i].Methods...).HeadersRegexp(Routes[i].HeadersRegexp...).Headers(Routes[i].Headers...)
         }
     }
-    fmt.Println("Running On " + port)
     fmt.Println(http.ListenAndServe(":" + port, router))
 
 }
