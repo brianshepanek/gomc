@@ -7,7 +7,7 @@ import (
     //"github.com/dgrijalva/jwt-go"
     "log"
     "encoding/json"
-    //"fmt"
+    "fmt"
     //"reflect"
     "strings"
     "github.com/garyburd/redigo/redis"
@@ -306,5 +306,5 @@ func Run(port string){
         }
     }
     log.Fatal(http.ListenAndServe(":" + port, router))
-
+    fmt.Println("Running On " + port)
 }
