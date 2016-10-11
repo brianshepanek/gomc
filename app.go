@@ -263,6 +263,10 @@ func setResponse(fn http.HandlerFunc) http.HandlerFunc {
     }
 }
 
+func TestRun(){
+    fmt.Println("TEST RUN")
+}
+
 func Run(port string){
 
     //Databases
