@@ -306,6 +306,6 @@ func Run(port string){
         }
     }
     fmt.Println("Running On " + port)
-    log.Fatal(http.ListenAndServe(":" + port, router))
+    fmt.Println(http.ListenAndServe(":" + port, router))
 
 }
