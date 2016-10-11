@@ -5,7 +5,7 @@ import (
     "github.com/gorilla/mux"
     "github.com/gorilla/context"
     //"github.com/dgrijalva/jwt-go"
-    "log"
+    //"log"
     "encoding/json"
     "fmt"
     //"reflect"
