@@ -7,13 +7,15 @@ import (
 	"reflect"
 	"gopkg.in/mgo.v2"
     "gopkg.in/mgo.v2/bson"
+	"strings"
     //"time"
 )
 
 type MongoDb struct {}
 
 type MongoDbParams struct {
-	Query map[string]interface{}
+	Query bson.M
+	RegexQuery []interface{}
     Fields map[string]int
     Sort string
     Limit int
@@ -103,15 +105,19 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 	if params.Page > 0 {
 		mongoDbParams.Skip = ((params.Page - 1) * model.Limit)
 	}
+
+	//Query
 	for key, value := range params.Query{
 		structKey := StructKeyFromJsonKey(model.Schema, key)
-		//fmt.Println(structKey)
 		field, err := reflect.TypeOf(model.Schema).FieldByName(structKey)
 		if err {
 			fieldType := field.Type.Kind()
-
 			switch fieldType {
-			case reflect.String, reflect.Array:
+			case reflect.String:
+				if strings.Contains(value.(string), "*"){
+					params.Query[key] = bson.RegEx{strings.Replace(value.(string), "*", ".*", 1), "i"}
+				}
+			case reflect.Array:
 				//params.Query[key] = valueField.String()
 			case reflect.Bool:
 				if(value == "true" || value == 1 || value == "1" || value == true){
@@ -120,13 +126,9 @@ func (db MongoDb) formatParams(model *Model, params Params) (MongoDbParams){
 					params.Query[key] = false
 				}
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				//params.Query[key] = valueField.Int()
 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-				//params.Query[key] = valueField.Uint()
 			case reflect.Float32, reflect.Float64:
-				//params.Query[key] = valueField.Float()
 			default :
-				//params.Query[key] = valueField.Interface()
 			}
 		}
 	}
@@ -289,7 +291,7 @@ func (db MongoDb) Counter(model *Model) int {
 	if err != nil {
 		fmt.Println(err)
 	}
-	
+
 	return doc.Seq
 }
 
@@ -356,8 +358,6 @@ func (db MongoDb) Find(model *Model, params Params, results interface{}) error {
 
 	//Params
 	mongoParams := db.formatParams(model, params)
-
-	//fmt.Println(mongoParams)
 
 	//DB
 	collection, session := db.Collection(model, false)
